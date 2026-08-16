@@ -419,6 +419,15 @@ export default function Home() {
               {filtered.length.toLocaleString("fr-FR")} résultat(s) affiché(s)
             </small>
           </form>
+          <div className="quick-actions">
+            <button type="button" onClick={recenter}>Recentrer</button>
+            <button
+              type="button"
+              onClick={() => synthesisRef.current?.showModal()}
+            >
+              Données & évolutions
+            </button>
+          </div>
           <div className="category-list">
             <div className="list-title">
               <strong>AFFICHAGE DE LA CARTE</strong>
@@ -469,7 +478,6 @@ export default function Home() {
             aria-label="Carte des services essentiels du Val-d’Oise"
           />
           <div className="map-tools">
-            <button onClick={recenter}>Recentrer</button>
             <button onClick={locate}>◎ Ma position</button>
             <span>Cliquez sur la carte pour analyser un lieu</span>
           </div>
