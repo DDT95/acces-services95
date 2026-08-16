@@ -12,6 +12,7 @@ const dila = JSON.parse(fs.readFileSync(dilaPath, "utf8")).service || [];
 const osm = JSON.parse(fs.readFileSync(osmPath, "utf8")).elements || [];
 
 const CATEGORY = {
+  france_services: { label: "France Services", color: "#000091" },
   administration: { label: "Administration & droits", color: "#3153a4" },
   sante: { label: "Santé & solidarité", color: "#d33b63" },
   education: { label: "Éducation & enfance", color: "#7b4bb7" },
@@ -32,6 +33,7 @@ function distance(a, b) {
 }
 function publicCategory(type = "") {
   const t = norm(type);
+  if (/france services/.test(t)) return "france_services";
   if (/police|gendarmer|sapeur|pompier|securite|penitentiaire/.test(t)) return "securite";
   if (/sante|hopital|medical|pharm|social|caf|cpam|msa|handicap|retraite|emploi|mission locale/.test(t)) return "sante";
   if (/ecole|college|lycee|univers|education|creche|enfance|cio/.test(t)) return "education";
@@ -62,14 +64,14 @@ for (const item of dila) {
   const insee = String(item.code_insee_commune || first(item.pivot)?.code_insee_commune?.[0] || "");
   const postcode = String(address.code_postal || "");
   const lat = Number(address.latitude), lon = Number(address.longitude);
-  if (!(insee.startsWith("95") || postcode.startsWith("95")) || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+  if (!(insee.startsWith("95") || /^95\d{3}$/.test(postcode)) || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
   const type = first(item.pivot)?.type_service_local || item.type_organisme || "service-public";
   records.push({
     id: `dila-${item.id}`,
     source: "Service-Public.gouv.fr / DILA",
     category: publicCategory(type),
     type,
-    typeLabel: type.replaceAll("-", " ").replace(/^./, c => c.toUpperCase()),
+    typeLabel: type === "france_services" ? "France Services" : type.replaceAll("-", " ").replace(/^./, c => c.toUpperCase()),
     name: item.nom || item.sigle || "Service public",
     lat, lon,
     address: compact([address.numero_voie, address.complement1, `${address.code_postal || ""} ${address.nom_commune || ""}`.trim()]).join(", "),

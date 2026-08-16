@@ -42,6 +42,7 @@ type Dataset = {
   records: Service[];
 };
 const ORDER = [
+  "france_services",
   "administration",
   "sante",
   "education",
@@ -51,6 +52,7 @@ const ORDER = [
   "culture",
 ];
 const ICONS: Record<string, string> = {
+  france_services: "FS",
   administration: "RF",
   sante: "+",
   education: "É",
@@ -467,7 +469,7 @@ export default function Home() {
       </section>
       <footer>
         <span>
-          <b>15 386 lieux</b> · données locales consolidées
+          <b>{data ? data.count.toLocaleString("fr-FR") : "…"} lieux</b> · données locales consolidées
         </span>
         <span>DDT Val-d’Oise · Leaflet 1.9.4 · OSM</span>
       </footer>
