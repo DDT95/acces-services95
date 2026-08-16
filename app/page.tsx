@@ -126,21 +126,18 @@ export default function Home() {
           attribution: "© OpenStreetMap · © CARTO",
         },
       ).addTo(map);
-      fetch(
-        "https://geo.api.gouv.fr/departements/95/communes?fields=nom,code,contour",
-      )
+      fetch("./data/departement95.geojson")
         .then((response) => response.json())
-        .then((communes) => {
-          const territory = L.geoJSON({
-            type: "FeatureCollection",
-            features: communes
-              .filter((commune: any) => commune.contour)
-              .map((commune: any) => ({
-                type: "Feature",
-                properties: { code: commune.code, nom: commune.nom },
-                geometry: commune.contour,
-              })),
-          });
+        .then((department) => {
+          const territory = L.geoJSON(department, {
+            style: {
+              color: "#000091",
+              weight: 2,
+              fill: false,
+              opacity: 0.55,
+            },
+            interactive: false,
+          }).addTo(map);
           map.fitBounds(territory.getBounds(), {
             padding: [0, 0],
             animate: false,
