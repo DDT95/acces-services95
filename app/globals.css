@@ -1171,3 +1171,101 @@ footer {
     grid-column: 1 / -1;
   }
 }
+.pedagogy-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 22px;
+}
+.pedagogy-steps {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.pedagogy-steps article,
+.pedagogy-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.07);
+}
+.pedagogy-steps article {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 10px;
+  padding: 14px;
+}
+.pedagogy-steps article > b {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+}
+.pedagogy-steps strong,
+.pedagogy-card h3 {
+  color: var(--deep);
+}
+.pedagogy-steps p,
+.pedagogy-card p,
+.pedagogy-card li {
+  color: #4c596c;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.pedagogy-steps p {
+  margin: 5px 0 0;
+}
+.pedagogy-card {
+  padding: 17px;
+}
+.pedagogy-card > span {
+  color: var(--blue);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+.pedagogy-card h3 {
+  margin: 6px 0 9px;
+  font-size: 16px;
+}
+.pedagogy-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.pedagogy-card li + li {
+  margin-top: 6px;
+}
+.quality-explain {
+  margin: 13px 0 0;
+  padding: 10px;
+  border-radius: 9px;
+  background: #eef3ff;
+}
+.caution-card {
+  border-left: 5px solid #e56b2f;
+}
+.france-card {
+  border-left: 5px solid var(--blue);
+}
+.pedagogy-grid .synthesis-note {
+  grid-column: 1 / -1;
+}
+@media (max-width: 900px) {
+  .pedagogy-steps {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 650px) {
+  .pedagogy-grid,
+  .pedagogy-steps {
+    grid-template-columns: 1fr;
+  }
+  .pedagogy-card,
+  .pedagogy-grid .synthesis-note {
+    grid-column: 1;
+  }
+}

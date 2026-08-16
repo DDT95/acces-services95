@@ -500,28 +500,29 @@ export default function Home() {
           ×
         </button>
         <div className="synthesis-head">
-          <span>SYNTHÈSE DÉPARTEMENTALE</span>
-          <h2>Services essentiels et accessibilité · Val-d’Oise</h2>
-          <p>Répartition des lieux recensés et niveau d’information pratique des fiches officielles.</p>
+          <span>COMPRENDRE LA CARTE</span>
+          <h2>Vos services sont-ils réellement accessibles ?</h2>
+          <p>Une méthode simple pour lire la carte, tester un trajet et repérer une fragilité territoriale.</p>
         </div>
         {data && synthesis ? (
-          <div className="synthesis-grid">
-            <section className="synthesis-kpis">
-              <article><small>Lieux recensés</small><strong>{data.count.toLocaleString("fr-FR")}</strong><span>DILA et OpenStreetMap</span></article>
-              <article><small>Fiches officielles</small><strong>{synthesis.official.toLocaleString("fr-FR")}</strong><span>Service-Public.gouv.fr</span></article>
-              <article><small>France Services</small><strong>{data.counts.france_services.toLocaleString("fr-FR")}</strong><span>implantations officielles</span></article>
-              <article><small>Catégories</small><strong>{ORDER.length}</strong><span>familles de services</span></article>
+          <div className="pedagogy-grid">
+            <section className="pedagogy-steps">
+              <article><b>1</b><div><strong>Choisissez un besoin</strong><p>Masquez les autres catégories pour éviter de confondre abondance de points et accès au service recherché.</p></div></article>
+              <article><b>2</b><div><strong>Cliquez sur un service ou un lieu</strong><p>La fiche donne l’adresse, le téléphone, les horaires connus et le lien vers la source.</p></div></article>
+              <article><b>3</b><div><strong>Calculez un temps d’accès</strong><p>Comparez 5, 10 ou 15 minutes à pied, puis 10, 15 ou 30 minutes en voiture.</p></div></article>
+              <article><b>4</b><div><strong>Vérifiez avant de partir</strong><p>Un horaire absent ou ancien doit être confirmé par téléphone ou sur le site officiel.</p></div></article>
             </section>
-            <section className="synthesis-chart">
-              <div className="chart-title"><strong>Répartition des lieux</strong><span>par famille de services</span></div>
-              {ORDER.map((key) => {
-                const count = data.counts[key] || 0;
-                const max = Math.max(...ORDER.map((k) => data.counts[k] || 0));
-                return <div className="chart-row" key={key}><span>{data.categories[key].label}</span><div><i style={{ width: `${Math.max(1.5, count / max * 100)}%`, background: data.categories[key].color }} /></div><b>{count.toLocaleString("fr-FR")}</b></div>;
-              })}
+            <section className="pedagogy-card fragility-card">
+              <span>REPÉRER UNE FRAGILITÉ</span>
+              <h3>Trois signaux à regarder</h3>
+              <ul>
+                <li><strong>Éloignement :</strong> aucun service utile dans l’isochrone piéton de 15 minutes.</li>
+                <li><strong>Dépendance automobile :</strong> le service apparaît seulement avec le calcul en voiture.</li>
+                <li><strong>Information incomplète :</strong> horaires ou contact absents, rendant le déplacement incertain.</li>
+              </ul>
             </section>
-            <section className="synthesis-chart quality-chart">
-              <div className="chart-title"><strong>Informations pratiques disponibles</strong><span>parmi les fiches officielles</span></div>
+            <section className="pedagogy-card quality-chart">
+              <div className="chart-title"><strong>Peut-on préparer son déplacement ?</strong><span>part des fiches officielles renseignées</span></div>
               {[
                 ["Téléphone", synthesis.hasPhone],
                 ["Horaires", synthesis.hasHours],
@@ -531,8 +532,20 @@ export default function Home() {
                 const pct = synthesis.official ? n / synthesis.official * 100 : 0;
                 return <div className="quality-row" key={String(label)}><span>{label}</span><div><i style={{ width: `${pct}%` }} /></div><b>{pct.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} %</b></div>;
               })}
+              <p className="quality-explain">Les horaires sont l’information la moins souvent publiée : mieux vaut vérifier avant un déplacement.</p>
             </section>
-            <p className="synthesis-note">État des données au {new Date(data.generatedAt).toLocaleDateString("fr-FR")} · Les évolutions correspondent aux mises à jour successives des sources officielles et contributives.</p>
+            <section className="pedagogy-card caution-card">
+              <span>BIEN INTERPRÉTER</span>
+              <h3>Un point n’est pas une capacité d’accueil</h3>
+              <p>La carte indique une implantation, pas le nombre d’agents, les délais de rendez-vous, la qualité de l’accueil ni la fréquentation.</p>
+              <p>Les arrêts de transport sont nombreux : leur volume ne doit pas masquer la rareté d’un service administratif, médical ou social.</p>
+            </section>
+            <section className="pedagogy-card france-card">
+              <span>FRANCE SERVICES</span>
+              <h3>{data.counts.france_services} lieux pour accompagner les démarches</h3>
+              <p>Utilisez le filtre dédié pour trouver un accompagnement administratif polyvalent, puis consultez les horaires et le téléphone de chaque implantation.</p>
+            </section>
+            <p className="synthesis-note">Sources mises à jour au {new Date(data.generatedAt).toLocaleDateString("fr-FR")} · Isochrones indicatifs calculés sur le réseau OpenStreetMap.</p>
           </div>
         ) : null}
       </dialog>
