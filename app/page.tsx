@@ -297,6 +297,17 @@ export default function Home() {
       mapRef.current.removeLayer(isoRef.current);
     isoRef.current = null;
   }
+  function closePanel(e: React.MouseEvent<HTMLButtonElement>) {
+    e.stopPropagation();
+    setPanelOpen(false);
+    setSelected(null);
+    setError("");
+    if (focusRef.current && mapRef.current) {
+      mapRef.current.removeLayer(focusRef.current);
+      focusRef.current = null;
+    }
+    window.setTimeout(() => mapRef.current?.invalidateSize(false), 320);
+  }
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -426,7 +437,7 @@ export default function Home() {
           </div>
         </section>
         <aside className={panelOpen ? "details open" : "details"}>
-          <button className="close-panel" onClick={() => setPanelOpen(false)}>
+          <button className="close-panel" onClick={closePanel}>
             ×
           </button>
           {selected ? (

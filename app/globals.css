@@ -890,11 +890,19 @@ footer {
   background: linear-gradient(180deg, #fff 0, #fff 72%, #f4f7fb 100%);
   box-shadow: -15px 0 45px #001f3f29;
   transform: translateX(calc(105% + 16px));
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
   padding: 30px;
   overflow: auto;
+  transition: transform 0.28s ease, opacity 0.2s ease, visibility 0s linear 0.28s;
 }
 .details.open {
   transform: none;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
 }
 .detail-head {
   padding: 0 35px 14px 0;
