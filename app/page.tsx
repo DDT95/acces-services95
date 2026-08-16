@@ -296,6 +296,7 @@ export default function Home() {
   }
   function closePanel(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
+    clearIso();
     setPanelOpen(false);
     setSelected(null);
     setError("");
