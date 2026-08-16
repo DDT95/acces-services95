@@ -1,30 +1,633 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-type Opening={nom_jour_debut?:string;nom_jour_fin?:string;valeur_heure_debut_1?:string;valeur_heure_fin_1?:string;valeur_heure_debut_2?:string;valeur_heure_fin_2?:string;commentaire?:string};
-type Service={id:string;source:string;category:string;type:string;typeLabel:string;name:string;lat:number;lon:number;address?:string;city?:string;phone?:string[];email?:string[];website?:string[];opening?:Opening[];openingText?:string;openingHours?:string;wheelchair?:string;operator?:string;mission?:string;description?:string;updated?:string;officialUrl?:string;osmUrl?:string};
-type Dataset={generatedAt:string;count:number;counts:Record<string,number>;categories:Record<string,{label:string;color:string}>;records:Service[]};
-const ORDER=["administration","sante","education","securite","mobilite","quotidien","culture"];
-const ICONS:Record<string,string>={administration:"RF",sante:"+",education:"É",securite:"!",mobilite:"↔",quotidien:"●",culture:"◆"};
-const ISO:Record<number,string>={5:"#087e8b",10:"#2f9ca5",15:"#78c5c9",30:"#c0e5e7"};
+type Opening = {
+  nom_jour_debut?: string;
+  nom_jour_fin?: string;
+  valeur_heure_debut_1?: string;
+  valeur_heure_fin_1?: string;
+  valeur_heure_debut_2?: string;
+  valeur_heure_fin_2?: string;
+  commentaire?: string;
+};
+type Service = {
+  id: string;
+  source: string;
+  category: string;
+  type: string;
+  typeLabel: string;
+  name: string;
+  lat: number;
+  lon: number;
+  address?: string;
+  city?: string;
+  phone?: string[];
+  email?: string[];
+  website?: string[];
+  opening?: Opening[];
+  openingText?: string;
+  openingHours?: string;
+  wheelchair?: string;
+  operator?: string;
+  mission?: string;
+  description?: string;
+  updated?: string;
+  officialUrl?: string;
+  osmUrl?: string;
+};
+type Dataset = {
+  generatedAt: string;
+  count: number;
+  counts: Record<string, number>;
+  categories: Record<string, { label: string; color: string }>;
+  records: Service[];
+};
+const ORDER = [
+  "administration",
+  "sante",
+  "education",
+  "securite",
+  "mobilite",
+  "quotidien",
+  "culture",
+];
+const ICONS: Record<string, string> = {
+  administration: "RF",
+  sante: "+",
+  education: "É",
+  securite: "!",
+  mobilite: "↔",
+  quotidien: "●",
+  culture: "◆",
+};
+const ISO: Record<number, string> = {
+  5: "#087e8b",
+  10: "#2f9ca5",
+  15: "#78c5c9",
+  30: "#c0e5e7",
+};
 
-export default function Home(){
- const mapEl=useRef<HTMLDivElement>(null),mapRef=useRef<any>(null),pointsRef=useRef<any>(null),isoRef=useRef<any>(null),focusRef=useRef<any>(null);
- const [data,setData]=useState<Dataset|null>(null),[selected,setSelected]=useState<Service|null>(null),[query,setQuery]=useState(""),[active,setActive]=useState(new Set(ORDER)),[mode,setMode]=useState<"pedestrian"|"auto">("pedestrian"),[loading,setLoading]=useState(false),[error,setError]=useState(""),[panelOpen,setPanelOpen]=useState(false),[mapReady,setMapReady]=useState(false);
- const filtered=useMemo(()=>{if(!data)return[];const q=query.trim().toLocaleLowerCase("fr");return data.records.filter(x=>active.has(x.category)&&(!q||`${x.name} ${x.typeLabel} ${x.address||""} ${x.city||""}`.toLocaleLowerCase("fr").includes(q)))},[data,query,active]);
- useEffect(()=>{fetch("./data/services-95.json").then(r=>r.json()).then(setData).catch(()=>setError("Les données ne peuvent pas être chargées."))},[]);
- useEffect(()=>{if(!mapEl.current||mapRef.current)return;const link=document.createElement("link");link.rel="stylesheet";link.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";document.head.appendChild(link);const script=document.createElement("script");script.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";script.onload=()=>{const L=(window as any).L;if(!L||!mapEl.current)return;const map=L.map(mapEl.current,{zoomControl:false,preferCanvas:true}).setView([49.075,2.13],10);L.control.zoom({position:"bottomleft"}).addTo(map);L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{maxZoom:20,subdomains:"abcd",attribution:"© OpenStreetMap · © CARTO"}).addTo(map);map.on("click",(e:any)=>{setSelected({id:"location",source:"Point choisi sur la carte",category:"mobilite",type:"location",typeLabel:"Lieu à analyser",name:"Point d’accessibilité",lat:e.latlng.lat,lon:e.latlng.lng});setPanelOpen(true)});mapRef.current=map;setMapReady(true)};document.body.appendChild(script)},[]);
- useEffect(()=>{const L=(window as any).L,map=mapRef.current;if(!L||!map||!data)return;if(pointsRef.current)map.removeLayer(pointsRef.current);const group=L.layerGroup(),renderer=L.canvas({padding:.5}),step=filtered.length>6500&&map.getZoom()<12?Math.ceil(filtered.length/6500):1;filtered.forEach((s,i)=>{if(i%step)return;const meta=data.categories[s.category],marker=L.circleMarker([s.lat,s.lon],{radius:s.source.includes("DILA")?5.5:4,color:"#fff",weight:1.2,fillColor:meta.color,fillOpacity:.9,renderer});marker.bindTooltip(`<strong>${esc(s.name)}</strong><br>${esc(s.typeLabel)}`,{direction:"top",className:"service-tooltip"});marker.on("click",(e:any)=>{L.DomEvent.stopPropagation(e);setSelected(s);setPanelOpen(true)});marker.addTo(group)});group.addTo(map);pointsRef.current=group},[data,filtered,mapReady]);
- useEffect(()=>{const L=(window as any).L,map=mapRef.current;if(!L||!map||!selected)return;if(focusRef.current)map.removeLayer(focusRef.current);focusRef.current=L.circleMarker([selected.lat,selected.lon],{radius:10,color:"#101b39",weight:3,fillColor:"#fff",fillOpacity:1}).addTo(map);map.panTo([selected.lat,selected.lon],{animate:true});setError("")},[selected]);
- function toggle(k:string){setActive(prev=>{const n=new Set(prev);n.has(k)?n.delete(k):n.add(k);return n})}
- function pick(){if(!filtered.length)return;setSelected(filtered[0]);setPanelOpen(true);mapRef.current?.setView([filtered[0].lat,filtered[0].lon],15)}
- function locate(){navigator.geolocation?.getCurrentPosition(p=>{const s:Service={id:"me",source:"Position de l’appareil",category:"mobilite",type:"location",typeLabel:"Ma position",name:"Autour de moi",lat:p.coords.latitude,lon:p.coords.longitude};setSelected(s);setPanelOpen(true);mapRef.current?.setView([s.lat,s.lon],14)},()=>setError("La localisation n’a pas été autorisée."))}
- async function isochrones(next=mode){if(!selected)return;setMode(next);setLoading(true);setError("");const times=next==="pedestrian"?[5,10,15]:[10,15,30];try{const r=await fetch("https://valhalla1.openstreetmap.de/isochrone",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({locations:[{lat:selected.lat,lon:selected.lon}],costing:next,contours:times.map(time=>({time,color:ISO[time].slice(1)})),polygons:true,denoise:1,generalize:20})});if(!r.ok)throw new Error();const geo=await r.json(),L=(window as any).L,map=mapRef.current;if(isoRef.current)map.removeLayer(isoRef.current);isoRef.current=L.geoJSON(geo,{style:(f:any)=>({color:ISO[Number(f.properties?.contour)]||"#087e8b",weight:2,fillColor:ISO[Number(f.properties?.contour)]||"#087e8b",fillOpacity:.16})}).addTo(map);map.fitBounds(isoRef.current.getBounds(),{padding:[35,35]})}catch{setError("Le calcul réseau est momentanément indisponible. Réessayez dans quelques instants.")}finally{setLoading(false)}}
- function clearIso(){if(isoRef.current&&mapRef.current)mapRef.current.removeLayer(isoRef.current);isoRef.current=null}
- return <main className="app-shell"><header className="topbar"><a className="brand" href="https://ddt95.github.io/atlas-territorial-95/"><img src="./prefet-val-doise.svg" alt="Préfet du Val-d’Oise — Liberté, Égalité, Fraternité"/></a><div className="title"><small>SERVICES ESSENTIELS · VAL-D’OISE</small><h1>Services essentiels & accessibilité</h1><p><strong>Val-d’Oise</strong> · services publics · santé · éducation · mobilités · vie quotidienne</p></div><div className="headline-count"><i/><div><strong>{data?`${data.count.toLocaleString("fr-FR")} lieux documentés`:"Préparation de la carte"}</strong><span>Service-Public.gouv.fr · OpenStreetMap</span></div></div></header><div className="progress"><span/></div><section className="workspace">
- <aside className="filters"><div className="intro"><span className="kicker">RECHERCHER ET COMPRENDRE</span><h2>Un service<br/><span>près de chez vous</span></h2><p>Recherchez un lieu, filtrez les services, puis cliquez sur un point pour ouvrir sa fiche complète.</p></div><form className="search" onSubmit={e=>{e.preventDefault();pick()}}><label htmlFor="search">Service, équipement ou commune</label><div><input id="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Mairie, pharmacie, Argenteuil…"/><button>Rechercher</button></div><small>{filtered.length.toLocaleString("fr-FR")} résultat(s) affiché(s)</small></form><div className="category-list"><div className="list-title"><strong>AFFICHAGE DE LA CARTE</strong><button onClick={()=>setActive(new Set(ORDER))}>Tout afficher</button></div>{data&&ORDER.map(k=><button key={k} className={active.has(k)?"category active":"category"} onClick={()=>toggle(k)}><i style={{background:data.categories[k].color}}>{ICONS[k]}</i><span>{data.categories[k].label}<small>{data.counts[k].toLocaleString("fr-FR")} lieux</small></span><b>{active.has(k)?"Affichés":"Masqués"}</b></button>)}</div><div className="source-note"><strong>Sources mobilisées</strong><span>Service‑Public.gouv.fr / DILA · OpenStreetMap</span><small>Mise à jour locale : {data?new Date(data.generatedAt).toLocaleDateString("fr-FR"):"…"}</small></div></aside>
- <section className="map-wrap"><div ref={mapEl} className="map" aria-label="Carte des services essentiels du Val-d’Oise"/><div className="map-tools"><button onClick={locate}>◎ Ma position</button><span>Cliquez sur la carte pour analyser un lieu</span></div><div className="map-legend"><strong>{filtered.length.toLocaleString("fr-FR")}</strong><span>points dans la sélection</span></div></section>
- <aside className={panelOpen?"details open":"details"}><button className="close-panel" onClick={()=>setPanelOpen(false)}>×</button>{selected?<Panel service={selected} categories={data?.categories||{}} mode={mode} loading={loading} error={error} onIso={isochrones} onClear={clearIso}/>:null}</aside></section><footer><span><b>15 386 lieux</b> · données locales consolidées</span><span>DDT Val-d’Oise · Leaflet 1.9.4 · OSM</span></footer></main>
+export default function Home() {
+  const mapEl = useRef<HTMLDivElement>(null),
+    mapRef = useRef<any>(null),
+    pointsRef = useRef<any>(null),
+    isoRef = useRef<any>(null),
+    focusRef = useRef<any>(null);
+  const [data, setData] = useState<Dataset | null>(null),
+    [selected, setSelected] = useState<Service | null>(null),
+    [query, setQuery] = useState(""),
+    [active, setActive] = useState(new Set(ORDER)),
+    [mode, setMode] = useState<"pedestrian" | "auto">("pedestrian"),
+    [loading, setLoading] = useState(false),
+    [error, setError] = useState(""),
+    [panelOpen, setPanelOpen] = useState(false),
+    [mapReady, setMapReady] = useState(false);
+  const filtered = useMemo(() => {
+    if (!data) return [];
+    const q = query.trim().toLocaleLowerCase("fr");
+    return data.records.filter(
+      (x) =>
+        active.has(x.category) &&
+        (!q ||
+          `${x.name} ${x.typeLabel} ${x.address || ""} ${x.city || ""}`
+            .toLocaleLowerCase("fr")
+            .includes(q)),
+    );
+  }, [data, query, active]);
+  useEffect(() => {
+    fetch("./data/services-95.json")
+      .then((r) => r.json())
+      .then(setData)
+      .catch(() => setError("Les données ne peuvent pas être chargées."));
+  }, []);
+  useEffect(() => {
+    if (!mapEl.current || mapRef.current) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(link);
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    script.onload = () => {
+      const L = (window as any).L;
+      if (!L || !mapEl.current) return;
+      const map = L.map(mapEl.current, {
+        zoomControl: false,
+        preferCanvas: true,
+      }).setView([49.075, 2.13], 10);
+      L.control.zoom({ position: "bottomleft" }).addTo(map);
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        {
+          maxZoom: 20,
+          subdomains: "abcd",
+          attribution: "© OpenStreetMap · © CARTO",
+        },
+      ).addTo(map);
+      map.on("click", (e: any) => {
+        setSelected({
+          id: "location",
+          source: "Point choisi sur la carte",
+          category: "mobilite",
+          type: "location",
+          typeLabel: "Lieu à analyser",
+          name: "Point d’accessibilité",
+          lat: e.latlng.lat,
+          lon: e.latlng.lng,
+        });
+        setPanelOpen(true);
+      });
+      mapRef.current = map;
+      setMapReady(true);
+    };
+    document.body.appendChild(script);
+  }, []);
+  useEffect(() => {
+    const L = (window as any).L,
+      map = mapRef.current;
+    if (!L || !map || !data) return;
+    if (pointsRef.current) map.removeLayer(pointsRef.current);
+    const group = L.layerGroup(),
+      renderer = L.canvas({ padding: 0.5 }),
+      step =
+        filtered.length > 6500 && map.getZoom() < 12
+          ? Math.ceil(filtered.length / 6500)
+          : 1;
+    filtered.forEach((s, i) => {
+      if (i % step) return;
+      const meta = data.categories[s.category],
+        marker = L.circleMarker([s.lat, s.lon], {
+          radius: s.source.includes("DILA") ? 5.5 : 4,
+          color: "#fff",
+          weight: 1.2,
+          fillColor: meta.color,
+          fillOpacity: 0.9,
+          renderer,
+        });
+      marker.bindTooltip(
+        `<strong>${esc(s.name)}</strong><br>${esc(s.typeLabel)}`,
+        { direction: "top", className: "service-tooltip" },
+      );
+      marker.on("click", (e: any) => {
+        L.DomEvent.stopPropagation(e);
+        setSelected(s);
+        setPanelOpen(true);
+      });
+      marker.addTo(group);
+    });
+    group.addTo(map);
+    pointsRef.current = group;
+  }, [data, filtered, mapReady]);
+  useEffect(() => {
+    const L = (window as any).L,
+      map = mapRef.current;
+    if (!L || !map || !selected) return;
+    if (focusRef.current) map.removeLayer(focusRef.current);
+    focusRef.current = L.circleMarker([selected.lat, selected.lon], {
+      radius: 10,
+      color: "#101b39",
+      weight: 3,
+      fillColor: "#fff",
+      fillOpacity: 1,
+    }).addTo(map);
+    map.panTo([selected.lat, selected.lon], { animate: true });
+    setError("");
+  }, [selected]);
+  function toggle(k: string) {
+    setActive((prev) => {
+      const n = new Set(prev);
+      n.has(k) ? n.delete(k) : n.add(k);
+      return n;
+    });
+  }
+  function pick() {
+    if (!filtered.length) return;
+    setSelected(filtered[0]);
+    setPanelOpen(true);
+    mapRef.current?.setView([filtered[0].lat, filtered[0].lon], 15);
+  }
+  function locate() {
+    navigator.geolocation?.getCurrentPosition(
+      (p) => {
+        const s: Service = {
+          id: "me",
+          source: "Position de l’appareil",
+          category: "mobilite",
+          type: "location",
+          typeLabel: "Ma position",
+          name: "Autour de moi",
+          lat: p.coords.latitude,
+          lon: p.coords.longitude,
+        };
+        setSelected(s);
+        setPanelOpen(true);
+        mapRef.current?.setView([s.lat, s.lon], 14);
+      },
+      () => setError("La localisation n’a pas été autorisée."),
+    );
+  }
+  async function isochrones(next = mode) {
+    if (!selected) return;
+    setMode(next);
+    setLoading(true);
+    setError("");
+    const times = next === "pedestrian" ? [5, 10, 15] : [10, 15, 30];
+    try {
+      const r = await fetch("https://valhalla1.openstreetmap.de/isochrone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locations: [{ lat: selected.lat, lon: selected.lon }],
+          costing: next,
+          contours: times.map((time) => ({ time, color: ISO[time].slice(1) })),
+          polygons: true,
+          denoise: 1,
+          generalize: 20,
+        }),
+      });
+      if (!r.ok) throw new Error();
+      const geo = await r.json(),
+        L = (window as any).L,
+        map = mapRef.current;
+      if (isoRef.current) map.removeLayer(isoRef.current);
+      isoRef.current = L.geoJSON(geo, {
+        style: (f: any) => ({
+          color: ISO[Number(f.properties?.contour)] || "#087e8b",
+          weight: 2,
+          fillColor: ISO[Number(f.properties?.contour)] || "#087e8b",
+          fillOpacity: 0.16,
+        }),
+      }).addTo(map);
+      map.fitBounds(isoRef.current.getBounds(), { padding: [35, 35] });
+    } catch {
+      setError(
+        "Le calcul réseau est momentanément indisponible. Réessayez dans quelques instants.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+  function clearIso() {
+    if (isoRef.current && mapRef.current)
+      mapRef.current.removeLayer(isoRef.current);
+    isoRef.current = null;
+  }
+  return (
+    <main className="app-shell">
+      <header className="topbar">
+        <a
+          className="brand"
+          href="https://ddt95.github.io/atlas-territorial-95/"
+        >
+          <img
+            src="./prefet-val-doise.svg"
+            alt="Préfet du Val-d’Oise — Liberté, Égalité, Fraternité"
+          />
+        </a>
+        <div className="title">
+          <small>SERVICES ESSENTIELS · VAL-D’OISE</small>
+          <h1>Services essentiels & accessibilité</h1>
+          <p>
+            <strong>Val-d’Oise</strong> · services publics · santé · éducation ·
+            mobilités · vie quotidienne
+          </p>
+        </div>
+        <div className="headline-count">
+          <i />
+          <div>
+            <strong>
+              {data
+                ? `${data.count.toLocaleString("fr-FR")} lieux documentés`
+                : "Préparation de la carte"}
+            </strong>
+            <span>Service-Public.gouv.fr · OpenStreetMap</span>
+          </div>
+        </div>
+      </header>
+      <div className="progress">
+        <span />
+      </div>
+      <section className="workspace">
+        <aside className="filters">
+          <div className="intro">
+            <span className="kicker">RECHERCHER ET COMPRENDRE</span>
+            <h2>
+              Un service
+              <br />
+              <span>près de chez vous</span>
+            </h2>
+            <p>
+              Recherchez un lieu, filtrez les services, puis cliquez sur un
+              point pour ouvrir sa fiche complète.
+            </p>
+          </div>
+          <form
+            className="search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              pick();
+            }}
+          >
+            <label htmlFor="search">Service, équipement ou commune</label>
+            <div>
+              <input
+                id="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Mairie, pharmacie, Argenteuil…"
+              />
+              <button>Rechercher</button>
+            </div>
+            <small>
+              {filtered.length.toLocaleString("fr-FR")} résultat(s) affiché(s)
+            </small>
+          </form>
+          <div className="category-list">
+            <div className="list-title">
+              <strong>AFFICHAGE DE LA CARTE</strong>
+              <div className="visibility-actions">
+                <button onClick={() => setActive(new Set())}>
+                  Tout masquer
+                </button>
+                <button onClick={() => setActive(new Set(ORDER))}>
+                  Tout afficher
+                </button>
+              </div>
+            </div>
+            {data &&
+              ORDER.map((k) => (
+                <button
+                  key={k}
+                  className={active.has(k) ? "category active" : "category"}
+                  onClick={() => toggle(k)}
+                >
+                  <i style={{ background: data.categories[k].color }}>
+                    {ICONS[k]}
+                  </i>
+                  <span>
+                    {data.categories[k].label}
+                    <small>
+                      {data.counts[k].toLocaleString("fr-FR")} lieux
+                    </small>
+                  </span>
+                  <b>{active.has(k) ? "Affichés" : "Masqués"}</b>
+                </button>
+              ))}
+          </div>
+          <div className="source-note">
+            <strong>Sources mobilisées</strong>
+            <span>Service‑Public.gouv.fr / DILA · OpenStreetMap</span>
+            <small>
+              Mise à jour locale :{" "}
+              {data
+                ? new Date(data.generatedAt).toLocaleDateString("fr-FR")
+                : "…"}
+            </small>
+          </div>
+        </aside>
+        <section className="map-wrap">
+          <div
+            ref={mapEl}
+            className="map"
+            aria-label="Carte des services essentiels du Val-d’Oise"
+          />
+          <div className="map-tools">
+            <button onClick={locate}>◎ Ma position</button>
+            <span>Cliquez sur la carte pour analyser un lieu</span>
+          </div>
+          <div className="map-legend">
+            <strong>{filtered.length.toLocaleString("fr-FR")}</strong>
+            <span>points dans la sélection</span>
+          </div>
+        </section>
+        <aside className={panelOpen ? "details open" : "details"}>
+          <button className="close-panel" onClick={() => setPanelOpen(false)}>
+            ×
+          </button>
+          {selected ? (
+            <Panel
+              service={selected}
+              categories={data?.categories || {}}
+              mode={mode}
+              loading={loading}
+              error={error}
+              onIso={isochrones}
+              onClear={clearIso}
+            />
+          ) : null}
+        </aside>
+      </section>
+      <footer>
+        <span>
+          <b>15 386 lieux</b> · données locales consolidées
+        </span>
+        <span>DDT Val-d’Oise · Leaflet 1.9.4 · OSM</span>
+      </footer>
+    </main>
+  );
 }
-function Panel({service,categories,mode,loading,error,onIso,onClear}:{service:Service;categories:Record<string,{label:string;color:string}>;mode:"pedestrian"|"auto";loading:boolean;error:string;onIso:(m?:"pedestrian"|"auto")=>void;onClear:()=>void}){const meta=categories[service.category]||{label:"Lieu",color:"#087e8b"};return <div className="detail-content"><div className="detail-head" style={{borderColor:meta.color}}><span style={{color:meta.color}}>{meta.label}</span><h2>{service.name}</h2><p>{service.typeLabel}{service.operator?` · ${service.operator}`:""}</p></div>{service.address&&<Info label="Adresse"><p>{service.address}</p><a href={`https://www.openstreetmap.org/directions?to=${service.lat},${service.lon}`} target="_blank">Itinéraire ↗</a></Info>}{service.mission&&<Info label="Mission"><p>{service.mission}</p></Info>}{service.description&&<Info label="Information"><p>{service.description}</p></Info>}{(service.phone?.length||service.email?.length||service.website?.length)?<Info label="Contacts"><div className="contact-list">{service.phone?.map(x=><a key={x} href={`tel:${x.replace(/\s/g,"")}`}>☎ {x}</a>)}{service.email?.map(x=><a key={x} href={`mailto:${x}`}>✉ {x}</a>)}{service.website?.map(x=><a key={x} href={url(x)} target="_blank">Site internet ↗</a>)}</div></Info>:null}{(service.opening?.length||service.openingHours||service.openingText)?<Info label="Horaires d’ouverture">{service.opening?.map((r,i)=><div className="hours" key={i}><b>{r.nom_jour_debut}{r.nom_jour_fin&&r.nom_jour_fin!==r.nom_jour_debut?` → ${r.nom_jour_fin}`:""}</b><span>{hours(r)}</span>{r.commentaire&&<small>{r.commentaire}</small>}</div>)}{service.openingHours&&<p className="osm-hours">{service.openingHours}</p>}{service.openingText&&<small>{service.openingText}</small>}</Info>:<Info label="Horaires"><p className="muted">Non renseignés par la source.</p></Info>}{service.wheelchair&&<Info label="Accessibilité"><p>{service.wheelchair==="yes"?"Accessible en fauteuil roulant":service.wheelchair==="limited"?"Accessibilité partielle":service.wheelchair==="no"?"Non accessible en fauteuil roulant":service.wheelchair}</p></Info>}
- <section className="iso-card"><span>ACCESSIBILITÉ DU LIEU</span><h3>Jusqu’où va-t-on en quelques minutes ?</h3><div className="mode-tabs"><button className={mode==="pedestrian"?"active":""} onClick={()=>onIso("pedestrian")}>À pied<small>5 · 10 · 15 min</small></button><button className={mode==="auto"?"active":""} onClick={()=>onIso("auto")}>En voiture<small>10 · 15 · 30 min</small></button></div><button className="calculate" onClick={()=>onIso()} disabled={loading}>{loading?"Calcul du réseau…":"Calculer les isochrones"}</button><button className="clear" onClick={onClear}>Effacer les zones</button>{error&&<p className="iso-error">{error}</p>}<small>Calcul fondé sur le réseau OpenStreetMap. Les temps restent indicatifs.</small></section><section className="provenance"><strong>Source</strong><span>{service.source}</span>{service.updated&&<small>Fiche mise à jour le {service.updated}</small>}<div>{service.officialUrl&&<a href={service.officialUrl} target="_blank">Fiche officielle ↗</a>}{service.osmUrl&&<a href={service.osmUrl} target="_blank">Voir dans OSM ↗</a>}</div></section></div>}
-function Info({label,children}:{label:string;children:React.ReactNode}){return <section className="info-block"><strong>{label}</strong>{children}</section>};function hours(r:Opening){const a=r.valeur_heure_debut_1&&r.valeur_heure_fin_1?`${r.valeur_heure_debut_1.slice(0,5)}–${r.valeur_heure_fin_1.slice(0,5)}`:"",b=r.valeur_heure_debut_2&&r.valeur_heure_fin_2?`${r.valeur_heure_debut_2.slice(0,5)}–${r.valeur_heure_fin_2.slice(0,5)}`:"";return[a,b].filter(Boolean).join(" · ")||"Sur rendez-vous"}function url(x:string){return/^https?:\/\//i.test(x)?x:`https://${x}`}function esc(x:string){return x.replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]||c))}
+function Panel({
+  service,
+  categories,
+  mode,
+  loading,
+  error,
+  onIso,
+  onClear,
+}: {
+  service: Service;
+  categories: Record<string, { label: string; color: string }>;
+  mode: "pedestrian" | "auto";
+  loading: boolean;
+  error: string;
+  onIso: (m?: "pedestrian" | "auto") => void;
+  onClear: () => void;
+}) {
+  const meta = categories[service.category] || {
+    label: "Lieu",
+    color: "#087e8b",
+  };
+  return (
+    <div className="detail-content">
+      <div className="detail-head" style={{ borderColor: meta.color }}>
+        <span style={{ color: meta.color }}>{meta.label}</span>
+        <h2>{service.name}</h2>
+        <p>
+          {service.typeLabel}
+          {service.operator ? ` · ${service.operator}` : ""}
+        </p>
+      </div>
+      {service.address && (
+        <Info label="Adresse">
+          <p>{service.address}</p>
+          <a
+            href={`https://www.openstreetmap.org/directions?to=${service.lat},${service.lon}`}
+            target="_blank"
+          >
+            Itinéraire ↗
+          </a>
+        </Info>
+      )}
+      {service.mission && (
+        <Info label="Mission">
+          <p>{service.mission}</p>
+        </Info>
+      )}
+      {service.description && (
+        <Info label="Information">
+          <p>{service.description}</p>
+        </Info>
+      )}
+      {service.phone?.length ||
+      service.email?.length ||
+      service.website?.length ? (
+        <Info label="Contacts">
+          <div className="contact-list">
+            {service.phone?.map((x) => (
+              <a key={x} href={`tel:${x.replace(/\s/g, "")}`}>
+                ☎ {x}
+              </a>
+            ))}
+            {service.email?.map((x) => (
+              <a key={x} href={`mailto:${x}`}>
+                ✉ {x}
+              </a>
+            ))}
+            {service.website?.map((x) => (
+              <a key={x} href={url(x)} target="_blank">
+                Site internet ↗
+              </a>
+            ))}
+          </div>
+        </Info>
+      ) : null}
+      {service.opening?.length ||
+      service.openingHours ||
+      service.openingText ? (
+        <Info label="Horaires d’ouverture">
+          {service.opening?.map((r, i) => (
+            <div className="hours" key={i}>
+              <b>
+                {r.nom_jour_debut}
+                {r.nom_jour_fin && r.nom_jour_fin !== r.nom_jour_debut
+                  ? ` → ${r.nom_jour_fin}`
+                  : ""}
+              </b>
+              <span>{hours(r)}</span>
+              {r.commentaire && <small>{r.commentaire}</small>}
+            </div>
+          ))}
+          {service.openingHours && (
+            <p className="osm-hours">{service.openingHours}</p>
+          )}
+          {service.openingText && <small>{service.openingText}</small>}
+        </Info>
+      ) : (
+        <Info label="Horaires">
+          <p className="muted">Non renseignés par la source.</p>
+        </Info>
+      )}
+      {service.wheelchair && (
+        <Info label="Accessibilité">
+          <p>
+            {service.wheelchair === "yes"
+              ? "Accessible en fauteuil roulant"
+              : service.wheelchair === "limited"
+                ? "Accessibilité partielle"
+                : service.wheelchair === "no"
+                  ? "Non accessible en fauteuil roulant"
+                  : service.wheelchair}
+          </p>
+        </Info>
+      )}
+      <section className="iso-card">
+        <span>ACCESSIBILITÉ DU LIEU</span>
+        <h3>Jusqu’où va-t-on en quelques minutes ?</h3>
+        <div className="mode-tabs">
+          <button
+            className={mode === "pedestrian" ? "active" : ""}
+            onClick={() => onIso("pedestrian")}
+          >
+            À pied<small>5 · 10 · 15 min</small>
+          </button>
+          <button
+            className={mode === "auto" ? "active" : ""}
+            onClick={() => onIso("auto")}
+          >
+            En voiture<small>10 · 15 · 30 min</small>
+          </button>
+        </div>
+        <button
+          className="calculate"
+          onClick={() => onIso()}
+          disabled={loading}
+        >
+          {loading ? "Calcul du réseau…" : "Calculer les isochrones"}
+        </button>
+        <button className="clear" onClick={onClear}>
+          Effacer les zones
+        </button>
+        {error && <p className="iso-error">{error}</p>}
+        <small>
+          Calcul fondé sur le réseau OpenStreetMap. Les temps restent
+          indicatifs.
+        </small>
+      </section>
+      <section className="provenance">
+        <strong>Source</strong>
+        <span>{service.source}</span>
+        {service.updated && (
+          <small>Fiche mise à jour le {service.updated}</small>
+        )}
+        <div>
+          {service.officialUrl && (
+            <a href={service.officialUrl} target="_blank">
+              Fiche officielle ↗
+            </a>
+          )}
+          {service.osmUrl && (
+            <a href={service.osmUrl} target="_blank">
+              Voir dans OSM ↗
+            </a>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+function Info({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="info-block">
+      <strong>{label}</strong>
+      {children}
+    </section>
+  );
+}
+function hours(r: Opening) {
+  const a =
+      r.valeur_heure_debut_1 && r.valeur_heure_fin_1
+        ? `${r.valeur_heure_debut_1.slice(0, 5)}–${r.valeur_heure_fin_1.slice(0, 5)}`
+        : "",
+    b =
+      r.valeur_heure_debut_2 && r.valeur_heure_fin_2
+        ? `${r.valeur_heure_debut_2.slice(0, 5)}–${r.valeur_heure_fin_2.slice(0, 5)}`
+        : "";
+  return [a, b].filter(Boolean).join(" · ") || "Sur rendez-vous";
+}
+function url(x: string) {
+  return /^https?:\/\//i.test(x) ? x : `https://${x}`;
+}
+function esc(x: string) {
+  return x.replace(
+    /[&<>'"]/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[
+        c
+      ] || c,
+  );
+}
