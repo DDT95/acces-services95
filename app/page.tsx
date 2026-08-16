@@ -77,6 +77,7 @@ export default function Home() {
     [query, setQuery] = useState(""),
     [active, setActive] = useState(new Set(ORDER)),
     [mode, setMode] = useState<"pedestrian" | "auto">("pedestrian"),
+    [duration, setDuration] = useState(10),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [panelOpen, setPanelOpen] = useState(false),
@@ -225,20 +226,22 @@ export default function Home() {
       () => setError("La localisation n’a pas été autorisée."),
     );
   }
-  async function isochrones(next = mode) {
-    if (!selected) return;
+  function changeIsoMode(next: "pedestrian" | "auto") {
     setMode(next);
+    setDuration(next === "pedestrian" ? 10 : 15);
+  }
+  async function isochrones() {
+    if (!selected) return;
     setLoading(true);
     setError("");
-    const times = next === "pedestrian" ? [5, 10, 15] : [10, 15, 30];
     try {
       const r = await fetch("https://valhalla1.openstreetmap.de/isochrone", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           locations: [{ lat: selected.lat, lon: selected.lon }],
-          costing: next,
-          contours: times.map((time) => ({ time, color: ISO[time].slice(1) })),
+          costing: mode,
+          contours: [{ time: duration, color: ISO[duration].slice(1) }],
           polygons: true,
           denoise: 1,
           generalize: 20,
@@ -408,9 +411,12 @@ export default function Home() {
               service={selected}
               categories={data?.categories || {}}
               mode={mode}
+              duration={duration}
               loading={loading}
               error={error}
               onIso={isochrones}
+              onMode={changeIsoMode}
+              onDuration={setDuration}
               onClear={clearIso}
             />
           ) : null}
@@ -429,17 +435,23 @@ function Panel({
   service,
   categories,
   mode,
+  duration,
   loading,
   error,
   onIso,
+  onMode,
+  onDuration,
   onClear,
 }: {
   service: Service;
   categories: Record<string, { label: string; color: string }>;
   mode: "pedestrian" | "auto";
+  duration: number;
   loading: boolean;
   error: string;
-  onIso: (m?: "pedestrian" | "auto") => void;
+  onIso: () => void;
+  onMode: (m: "pedestrian" | "auto") => void;
+  onDuration: (minutes: number) => void;
   onClear: () => void;
 }) {
   const meta = categories[service.category] || {
@@ -545,23 +557,36 @@ function Panel({
         <div className="mode-tabs">
           <button
             className={mode === "pedestrian" ? "active" : ""}
-            onClick={() => onIso("pedestrian")}
+            onClick={() => onMode("pedestrian")}
           >
-            À pied<small>5 · 10 · 15 min</small>
+            À pied
           </button>
           <button
             className={mode === "auto" ? "active" : ""}
-            onClick={() => onIso("auto")}
+            onClick={() => onMode("auto")}
           >
-            En voiture<small>10 · 15 · 30 min</small>
+            En voiture
           </button>
+        </div>
+        <div className="duration-picker" aria-label="Durée de l’isochrone">
+          {(mode === "pedestrian" ? [5, 10, 15] : [10, 15, 30]).map(
+            (minutes) => (
+              <button
+                key={minutes}
+                className={duration === minutes ? "active" : ""}
+                onClick={() => onDuration(minutes)}
+              >
+                {minutes} min
+              </button>
+            ),
+          )}
         </div>
         <button
           className="calculate"
-          onClick={() => onIso()}
+          onClick={onIso}
           disabled={loading}
         >
-          {loading ? "Calcul du réseau…" : "Calculer les isochrones"}
+          {loading ? "Calcul du réseau…" : `Afficher ${duration} min`}
         </button>
         <button className="clear" onClick={onClear}>
           Effacer les zones

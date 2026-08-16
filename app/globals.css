@@ -330,7 +330,7 @@ button {
   background: #eef1f4;
 }
 .leaflet-tile-pane {
-  filter: grayscale(1) saturate(0.18) brightness(1.08) contrast(0.9);
+  filter: none;
 }
 .map-tools {
   position: absolute;
@@ -536,6 +536,26 @@ button {
   font-size: 9px;
   margin-top: 3px;
   font-weight: 500;
+}
+.duration-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin-top: 8px;
+}
+.duration-picker button {
+  border: 1px solid #cfd8ea;
+  border-radius: 12px;
+  padding: 9px 6px;
+  background: #fff;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 800;
+}
+.duration-picker button.active {
+  border-color: var(--cyan);
+  background: #eef7f8;
+  box-shadow: inset 0 0 0 1px var(--cyan);
 }
 .calculate {
   width: 100%;
@@ -906,7 +926,7 @@ footer {
   padding: 12px 0;
 }
 .leaflet-tile-pane {
-  filter: grayscale(0.75) saturate(0.4) brightness(1.08);
+  filter: none;
 }
 @media (max-width: 980px) {
   .topbar {
