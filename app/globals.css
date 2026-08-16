@@ -1027,6 +1027,9 @@ footer {
   color: #fff;
 }
 .synthesis-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
   width: min(1180px, calc(100% - 56px));
   max-height: calc(100% - 56px);
   border: 0;
