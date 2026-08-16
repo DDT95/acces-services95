@@ -114,7 +114,9 @@ export default function Home() {
       const map = L.map(mapEl.current, {
         zoomControl: false,
         preferCanvas: true,
-      }).setView([49.075, 2.13], 10);
+        minZoom: 7,
+        maxZoom: 15,
+      }).setView([49.075, 2.1], 10);
       L.control.zoom({ position: "bottomleft" }).addTo(map);
       L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
@@ -124,6 +126,27 @@ export default function Home() {
           attribution: "© OpenStreetMap · © CARTO",
         },
       ).addTo(map);
+      fetch(
+        "https://geo.api.gouv.fr/departements/95/communes?fields=nom,code,contour",
+      )
+        .then((response) => response.json())
+        .then((communes) => {
+          const territory = L.geoJSON({
+            type: "FeatureCollection",
+            features: communes
+              .filter((commune: any) => commune.contour)
+              .map((commune: any) => ({
+                type: "Feature",
+                properties: { code: commune.code, nom: commune.nom },
+                geometry: commune.contour,
+              })),
+          });
+          map.fitBounds(territory.getBounds(), {
+            padding: [0, 0],
+            animate: false,
+          });
+        })
+        .catch(() => map.setView([49.075, 2.1], 10, { animate: false }));
       map.on("click", (e: any) => {
         setSelected({
           id: "location",
