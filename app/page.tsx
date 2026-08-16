@@ -252,26 +252,6 @@ export default function Home() {
     setPanelOpen(true);
     mapRef.current?.setView([filtered[0].lat, filtered[0].lon], 15);
   }
-  function locate() {
-    navigator.geolocation?.getCurrentPosition(
-      (p) => {
-        const s: Service = {
-          id: "me",
-          source: "Position de l’appareil",
-          category: "mobilite",
-          type: "location",
-          typeLabel: "Ma position",
-          name: "Autour de moi",
-          lat: p.coords.latitude,
-          lon: p.coords.longitude,
-        };
-        setSelected(s);
-        setPanelOpen(true);
-        mapRef.current?.setView([s.lat, s.lon], 14);
-      },
-      () => setError("La localisation n’a pas été autorisée."),
-    );
-  }
   function recenter() {
     clearIso();
     setPanelOpen(false);
@@ -478,7 +458,6 @@ export default function Home() {
             aria-label="Carte des services essentiels du Val-d’Oise"
           />
           <div className="map-tools">
-            <button onClick={locate}>◎ Ma position</button>
             <span>Cliquez sur la carte pour analyser un lieu</span>
           </div>
           <div className="map-legend">
