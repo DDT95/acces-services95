@@ -73,7 +73,9 @@ export default function Home() {
     mapRef = useRef<any>(null),
     pointsRef = useRef<any>(null),
     isoRef = useRef<any>(null),
-    focusRef = useRef<any>(null);
+    focusRef = useRef<any>(null),
+    territoryBoundsRef = useRef<any>(null),
+    synthesisRef = useRef<HTMLDialogElement>(null);
   const [data, setData] = useState<Dataset | null>(null),
     [selected, setSelected] = useState<Service | null>(null),
     [query, setQuery] = useState(""),
@@ -96,6 +98,16 @@ export default function Home() {
             .includes(q)),
     );
   }, [data, query, active]);
+  const synthesis = useMemo(() => {
+    if (!data) return null;
+    const official = data.records.filter((x) => x.source.includes("DILA"));
+    const hasPhone = official.filter((x) => x.phone?.length).length;
+    const hasHours = official.filter(
+      (x) => x.opening?.length || x.openingHours || x.openingText,
+    ).length;
+    const hasWebsite = official.filter((x) => x.website?.length).length;
+    return { official: official.length, hasPhone, hasHours, hasWebsite };
+  }, [data]);
   useEffect(() => {
     fetch("./data/services-95.json")
       .then((r) => r.json())
@@ -145,6 +157,7 @@ export default function Home() {
             },
             interactive: false,
           }).addTo(map);
+          territoryBoundsRef.current = territory.getBounds();
           map.fitBounds(territory.getBounds(), {
             padding: [0, 0],
             animate: false,
@@ -259,6 +272,23 @@ export default function Home() {
       () => setError("La localisation n’a pas été autorisée."),
     );
   }
+  function recenter() {
+    clearIso();
+    setPanelOpen(false);
+    setSelected(null);
+    if (focusRef.current && mapRef.current) {
+      mapRef.current.removeLayer(focusRef.current);
+      focusRef.current = null;
+    }
+    if (territoryBoundsRef.current) {
+      mapRef.current?.fitBounds(territoryBoundsRef.current, {
+        padding: [0, 0],
+        animate: false,
+      });
+    } else {
+      mapRef.current?.setView([49.075, 2.1], 10, { animate: false });
+    }
+  }
   function changeIsoMode(next: "pedestrian" | "auto") {
     setMode(next);
     setDuration(next === "pedestrian" ? 10 : 15);
@@ -339,17 +369,17 @@ export default function Home() {
             mobilités · vie quotidienne
           </p>
         </div>
-        <div className="headline-count">
+        <button
+          className="headline-count data-button"
+          type="button"
+          onClick={() => synthesisRef.current?.showModal()}
+        >
           <i />
           <div>
-            <strong>
-              {data
-                ? `${data.count.toLocaleString("fr-FR")} lieux documentés`
-                : "Préparation de la carte"}
-            </strong>
-            <span>Service-Public.gouv.fr · OpenStreetMap</span>
+            <strong>Données & évolutions</strong>
+            <span>Synthèse départementale</span>
           </div>
-        </div>
+        </button>
       </header>
       <div className="progress">
         <span />
@@ -439,6 +469,7 @@ export default function Home() {
             aria-label="Carte des services essentiels du Val-d’Oise"
           />
           <div className="map-tools">
+            <button onClick={recenter}>Recentrer</button>
             <button onClick={locate}>◎ Ma position</button>
             <span>Cliquez sur la carte pour analyser un lieu</span>
           </div>
@@ -473,6 +504,51 @@ export default function Home() {
         </span>
         <span>DDT Val-d’Oise · Leaflet 1.9.4 · OSM</span>
       </footer>
+      <dialog ref={synthesisRef} className="synthesis-dialog">
+        <button
+          className="dialog-close"
+          aria-label="Fermer la synthèse"
+          onClick={() => synthesisRef.current?.close()}
+        >
+          ×
+        </button>
+        <div className="synthesis-head">
+          <span>SYNTHÈSE DÉPARTEMENTALE</span>
+          <h2>Services essentiels et accessibilité · Val-d’Oise</h2>
+          <p>Répartition des lieux recensés et niveau d’information pratique des fiches officielles.</p>
+        </div>
+        {data && synthesis ? (
+          <div className="synthesis-grid">
+            <section className="synthesis-kpis">
+              <article><small>Lieux recensés</small><strong>{data.count.toLocaleString("fr-FR")}</strong><span>DILA et OpenStreetMap</span></article>
+              <article><small>Fiches officielles</small><strong>{synthesis.official.toLocaleString("fr-FR")}</strong><span>Service-Public.gouv.fr</span></article>
+              <article><small>France Services</small><strong>{data.counts.france_services.toLocaleString("fr-FR")}</strong><span>implantations officielles</span></article>
+              <article><small>Catégories</small><strong>{ORDER.length}</strong><span>familles de services</span></article>
+            </section>
+            <section className="synthesis-chart">
+              <div className="chart-title"><strong>Répartition des lieux</strong><span>par famille de services</span></div>
+              {ORDER.map((key) => {
+                const count = data.counts[key] || 0;
+                const max = Math.max(...ORDER.map((k) => data.counts[k] || 0));
+                return <div className="chart-row" key={key}><span>{data.categories[key].label}</span><div><i style={{ width: `${Math.max(1.5, count / max * 100)}%`, background: data.categories[key].color }} /></div><b>{count.toLocaleString("fr-FR")}</b></div>;
+              })}
+            </section>
+            <section className="synthesis-chart quality-chart">
+              <div className="chart-title"><strong>Informations pratiques disponibles</strong><span>parmi les fiches officielles</span></div>
+              {[
+                ["Téléphone", synthesis.hasPhone],
+                ["Horaires", synthesis.hasHours],
+                ["Site internet", synthesis.hasWebsite],
+              ].map(([label, value]) => {
+                const n = Number(value);
+                const pct = synthesis.official ? n / synthesis.official * 100 : 0;
+                return <div className="quality-row" key={String(label)}><span>{label}</span><div><i style={{ width: `${pct}%` }} /></div><b>{pct.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} %</b></div>;
+              })}
+            </section>
+            <p className="synthesis-note">État des données au {new Date(data.generatedAt).toLocaleDateString("fr-FR")} · Les évolutions correspondent aux mises à jour successives des sources officielles et contributives.</p>
+          </div>
+        ) : null}
+      </dialog>
     </main>
   );
 }
