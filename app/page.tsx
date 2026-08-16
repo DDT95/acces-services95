@@ -502,16 +502,6 @@ function Panel({
           </a>
         </Info>
       )}
-      {service.mission && (
-        <Info label="Mission">
-          <p>{service.mission}</p>
-        </Info>
-      )}
-      {service.description && (
-        <Info label="Information">
-          <p>{service.description}</p>
-        </Info>
-      )}
       {service.phone?.length ||
       service.email?.length ||
       service.website?.length ? (
