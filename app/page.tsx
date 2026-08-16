@@ -126,10 +126,15 @@ export default function Home() {
           attribution: "© OpenStreetMap · © CARTO",
         },
       ).addTo(map);
+      const boundaryPane = map.createPane("departmentBoundary");
+      boundaryPane.style.zIndex = "390";
+      boundaryPane.style.pointerEvents = "none";
       fetch("./data/departement95.geojson")
         .then((response) => response.json())
         .then((department) => {
           const territory = L.geoJSON(department, {
+            pane: "departmentBoundary",
+            renderer: L.svg({ pane: "departmentBoundary" }),
             style: {
               color: "#000091",
               weight: 2,
@@ -192,6 +197,12 @@ export default function Home() {
         L.DomEvent.stopPropagation(e);
         setSelected(s);
         setPanelOpen(true);
+      });
+      marker.on("mouseover", () => {
+        map.getContainer().style.cursor = "pointer";
+      });
+      marker.on("mouseout", () => {
+        map.getContainer().style.cursor = "";
       });
       marker.addTo(group);
     });
