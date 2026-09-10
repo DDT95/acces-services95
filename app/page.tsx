@@ -133,11 +133,10 @@ export default function Home() {
       }).setView([49.075, 2.1], 10);
       L.control.zoom({ position: "bottomleft" }).addTo(map);
       L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         {
-          maxZoom: 20,
-          subdomains: "abcd",
-          attribution: "© OpenStreetMap · © CARTO",
+          maxZoom: 19,
+          attribution: "© OpenStreetMap contributors",
         },
       ).addTo(map);
       const boundaryPane = map.createPane("departmentBoundary");
