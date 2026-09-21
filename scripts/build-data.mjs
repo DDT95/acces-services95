@@ -43,6 +43,9 @@ function publicCategory(type = "") {
 }
 function osmCategory(tags) {
   const a = tags.amenity || "", h = tags.healthcare || "", s = tags.shop || "", l = tags.leisure || "", t = tags.tourism || "";
+  // leisure=swimming_pool est massivement utilisé en France pour des piscines privées
+  // de particuliers (imports cadastraux/aériens), pas des équipements publics.
+  if (l === "swimming_pool") return null;
   if (h || /hospital|clinic|doctors|dentist|pharmacy|nursing_home|social_facility|veterinary/.test(a)) return "sante";
   if (/school|kindergarten|college|university|childcare/.test(a)) return "education";
   if (/police|fire_station|rescue_station/.test(a)) return "securite";
