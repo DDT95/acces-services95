@@ -1,0 +1,19 @@
+[out:json][timeout:180];
+area["boundary"="administrative"]["admin_level"="6"]["ref:INSEE"="95"]->.a;
+(
+  node["amenity"](area.a);
+  node["healthcare"](area.a);
+  node["shop"](area.a);
+  node["leisure"](area.a);
+  node["tourism"](area.a);
+  node["office"](area.a);
+  node["public_transport"](area.a);
+  way["amenity"](area.a);
+  way["healthcare"](area.a);
+  way["shop"](area.a);
+  way["leisure"](area.a);
+  way["tourism"](area.a);
+  way["office"](area.a);
+  way["public_transport"](area.a);
+);
+out center;
