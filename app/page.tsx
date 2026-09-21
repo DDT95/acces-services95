@@ -89,12 +89,14 @@ const ICON_SVG_INNER: Record<string, string> = {
   culture:
     '<path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2.1 0-.8-.5-1.4-.5-2.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8Z"/><circle cx="8.3" cy="10.5" r="0.9" fill="#fff" stroke="none"/><circle cx="12" cy="7.8" r="0.9" fill="#fff" stroke="none"/><circle cx="15.7" cy="10.5" r="0.9" fill="#fff" stroke="none"/><circle cx="9.3" cy="15" r="0.9" fill="#fff" stroke="none"/>',
 };
+const PIN_SPAN_STYLE =
+  "display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 7px rgba(15,23,42,.3);overflow:hidden;box-sizing:border-box";
 function pinIconHtml(category: string, color: string) {
   if (category === "france_services") {
-    return `<span style="background:#fff"><img src="./logos/france-services-mark.png" alt="" /></span>`;
+    return `<span style="${PIN_SPAN_STYLE};background:#fff"><img src="./logos/france-services-mark.png" alt="" width="16" height="6" style="width:16px;height:auto;display:block" /></span>`;
   }
   const inner = ICON_SVG_INNER[category] || "";
-  return `<span style="background:${color}"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg></span>`;
+  return `<span style="${PIN_SPAN_STYLE};background:${color}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px">${inner}</svg></span>`;
 }
 const PIN_ZOOM_THRESHOLD = 14;
 
