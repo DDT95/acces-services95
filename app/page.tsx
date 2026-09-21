@@ -51,16 +51,21 @@ const ORDER = [
   "quotidien",
   "culture",
 ];
-const ICONS: Record<string, string> = {
-  france_services: "FS",
-  administration: "RF",
-  sante: "+",
-  education: "É",
-  securite: "!",
-  mobilite: "↔",
-  quotidien: "●",
-  culture: "◆",
-};
+const GROUPS: { label: string; keys: string[] }[] = [
+  { label: "Accueil & démarches", keys: ["france_services", "administration"] },
+  { label: "Santé & éducation", keys: ["sante", "education"] },
+  { label: "Sécurité & mobilité", keys: ["securite", "mobilite"] },
+  { label: "Quotidien & culture", keys: ["quotidien", "culture"] },
+];
+const QUOTIDIEN_GROUPS: { key: string; label: string; types: string[] }[] = [
+  {
+    key: "alimentation",
+    label: "Alimentation & commerces",
+    types: ["convenience", "supermarket", "bakery", "marketplace", "cafe", "teahouse", "restaurant", "bar"],
+  },
+  { key: "banque", label: "Banque & argent", types: ["bank", "atm"] },
+  { key: "poste", label: "Poste & courrier", types: ["post_office", "post_box"] },
+];
 const ISO: Record<number, string> = {
   5: "#087e8b",
   10: "#2f9ca5",
@@ -80,6 +85,7 @@ export default function Home() {
     [selected, setSelected] = useState<Service | null>(null),
     [query, setQuery] = useState(""),
     [active, setActive] = useState(new Set(ORDER)),
+    [hiddenTypes, setHiddenTypes] = useState(new Set<string>()),
     [mode, setMode] = useState<"pedestrian" | "auto">("pedestrian"),
     [duration, setDuration] = useState(10),
     [loading, setLoading] = useState(false),
@@ -92,12 +98,33 @@ export default function Home() {
     return data.records.filter(
       (x) =>
         active.has(x.category) &&
+        !hiddenTypes.has(x.type) &&
         (!q ||
           `${x.name} ${x.typeLabel} ${x.address || ""} ${x.city || ""}`
             .toLocaleLowerCase("fr")
             .includes(q)),
     );
-  }, [data, query, active]);
+  }, [data, query, active, hiddenTypes]);
+  const quotidienBreakdown = useMemo(() => {
+    if (!data) return [];
+    const groups = QUOTIDIEN_GROUPS.map((g) => ({ ...g, count: 0 }));
+    const autresTypes = new Set<string>();
+    let autresCount = 0;
+    for (const r of data.records) {
+      if (r.category !== "quotidien") continue;
+      const g = groups.find((g) => g.types.includes(r.type));
+      if (g) g.count++;
+      else {
+        autresCount++;
+        autresTypes.add(r.type);
+      }
+    }
+    return [...groups, { key: "autres", label: "Autres services", types: [...autresTypes], count: autresCount }];
+  }, [data]);
+  const dataAgeDays = useMemo(() => {
+    if (!data) return null;
+    return Math.floor((Date.now() - new Date(data.generatedAt).getTime()) / 86400000);
+  }, [data]);
   const synthesis = useMemo(() => {
     if (!data) return null;
     const official = data.records.filter((x) => x.source.includes("DILA"));
@@ -242,6 +269,14 @@ export default function Home() {
     setActive((prev) => {
       const n = new Set(prev);
       n.has(k) ? n.delete(k) : n.add(k);
+      return n;
+    });
+  }
+  function toggleTypes(types: string[]) {
+    setHiddenTypes((prev) => {
+      const n = new Set(prev);
+      const allHidden = types.every((t) => n.has(t));
+      for (const t of types) (allHidden ? n.delete(t) : n.add(t));
       return n;
     });
   }
@@ -414,29 +449,58 @@ export default function Home() {
                 <button onClick={() => setActive(new Set())}>
                   Tout masquer
                 </button>
-                <button onClick={() => setActive(new Set(ORDER))}>
+                <button
+                  onClick={() => {
+                    setActive(new Set(ORDER));
+                    setHiddenTypes(new Set());
+                  }}
+                >
                   Tout afficher
                 </button>
               </div>
             </div>
             {data &&
-              ORDER.map((k) => (
-                <button
-                  key={k}
-                  className={active.has(k) ? "category active" : "category"}
-                  onClick={() => toggle(k)}
-                >
-                  <i style={{ background: data.categories[k].color }}>
-                    {ICONS[k]}
-                  </i>
-                  <span>
-                    {data.categories[k].label}
-                    <small>
-                      {data.counts[k].toLocaleString("fr-FR")} lieux
-                    </small>
-                  </span>
-                  <b>{active.has(k) ? "Affichés" : "Masqués"}</b>
-                </button>
+              GROUPS.map((group) => (
+                <div className="category-group" key={group.label}>
+                  <span className="group-label">{group.label}</span>
+                  {group.keys.map((k) => (
+                    <div key={k}>
+                      <button
+                        className={active.has(k) ? "category active" : "category"}
+                        onClick={() => toggle(k)}
+                      >
+                        <i style={{ background: data.categories[k].color }}>
+                          <CategoryIcon k={k} />
+                        </i>
+                        <span>
+                          {data.categories[k].label}
+                          <small>
+                            {data.counts[k].toLocaleString("fr-FR")} lieux
+                          </small>
+                        </span>
+                        <b>{active.has(k) ? "Affichés" : "Masqués"}</b>
+                      </button>
+                      {k === "quotidien" && (
+                        <div className="subtype-list">
+                          {quotidienBreakdown.map((g) => {
+                            const isVisible = !g.types.length || !g.types.every((t) => hiddenTypes.has(t));
+                            return (
+                              <button
+                                key={g.key}
+                                type="button"
+                                className={isVisible ? "subtype-chip active" : "subtype-chip"}
+                                onClick={() => toggleTypes(g.types)}
+                              >
+                                <span>{g.label}</span>
+                                <b>{g.count.toLocaleString("fr-FR")}</b>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               ))}
           </div>
           <div className="source-note">
@@ -447,6 +511,9 @@ export default function Home() {
               {data
                 ? new Date(data.generatedAt).toLocaleDateString("fr-FR")
                 : "…"}
+              {dataAgeDays !== null && dataAgeDays > 30
+                ? ` · à vérifier (${dataAgeDays} j)`
+                : ""}
             </small>
           </div>
         </aside>
@@ -753,6 +820,94 @@ function hours(r: Opening) {
         ? `${r.valeur_heure_debut_2.slice(0, 5)}–${r.valeur_heure_fin_2.slice(0, 5)}`
         : "";
   return [a, b].filter(Boolean).join(" · ") || "Sur rendez-vous";
+}
+function CategoryIcon({ k }: { k: string }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.7,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    width: 17,
+    height: 17,
+  };
+  switch (k) {
+    case "france_services":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="3" />
+          <line x1="12" y1="2.3" x2="12" y2="6.3" />
+          <line x1="12" y1="17.7" x2="12" y2="21.7" />
+          <line x1="2.3" y1="12" x2="6.3" y2="12" />
+          <line x1="17.7" y1="12" x2="21.7" y2="12" />
+        </svg>
+      );
+    case "administration":
+      return (
+        <svg {...common}>
+          <path d="M3 10 12 4 21 10" />
+          <line x1="3" y1="21" x2="21" y2="21" />
+          <line x1="5" y1="21" x2="5" y2="10" />
+          <line x1="9" y1="21" x2="9" y2="10" />
+          <line x1="15" y1="21" x2="15" y2="10" />
+          <line x1="19" y1="21" x2="19" y2="10" />
+        </svg>
+      );
+    case "sante":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="9" />
+          <line x1="12" y1="7.5" x2="12" y2="16.5" />
+          <line x1="7.5" y1="12" x2="16.5" y2="12" />
+        </svg>
+      );
+    case "education":
+      return (
+        <svg {...common}>
+          <path d="M3 6c3-1.5 6-1.5 9 0v13c-3-1.5-6-1.5-9 0V6Z" />
+          <path d="M21 6c-3-1.5-6-1.5-9 0v13c3-1.5 6-1.5 9 0V6Z" />
+        </svg>
+      );
+    case "securite":
+      return (
+        <svg {...common}>
+          <path d="M12 2 20 5v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V5l8-3Z" />
+          <path d="M8.5 12.3 10.8 14.6 15.3 10" />
+        </svg>
+      );
+    case "mobilite":
+      return (
+        <svg {...common}>
+          <rect x="4" y="5.5" width="16" height="11" rx="2.5" />
+          <line x1="4" y1="11.5" x2="20" y2="11.5" />
+          <line x1="8" y1="5.5" x2="8" y2="11.5" />
+          <line x1="16" y1="5.5" x2="16" y2="11.5" />
+          <circle cx="8" cy="18.5" r="1.4" />
+          <circle cx="16" cy="18.5" r="1.4" />
+        </svg>
+      );
+    case "quotidien":
+      return (
+        <svg {...common}>
+          <path d="M6 8h12l-1 12H7L6 8Z" />
+          <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+        </svg>
+      );
+    case "culture":
+      return (
+        <svg {...common}>
+          <path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2.1 0-.8-.5-1.4-.5-2.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8Z" />
+          <circle cx="8.3" cy="10.5" r="0.9" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none" />
+          <circle cx="15.7" cy="10.5" r="0.9" fill="currentColor" stroke="none" />
+          <circle cx="9.3" cy="15" r="0.9" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    default:
+      return null;
+  }
 }
 function url(x: string) {
   return /^https?:\/\//i.test(x) ? x : `https://${x}`;
