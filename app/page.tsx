@@ -90,6 +90,9 @@ const ICON_SVG_INNER: Record<string, string> = {
     '<path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2.1 0-.8-.5-1.4-.5-2.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8Z"/><circle cx="8.3" cy="10.5" r="0.9" fill="#fff" stroke="none"/><circle cx="12" cy="7.8" r="0.9" fill="#fff" stroke="none"/><circle cx="15.7" cy="10.5" r="0.9" fill="#fff" stroke="none"/><circle cx="9.3" cy="15" r="0.9" fill="#fff" stroke="none"/>',
 };
 function pinIconHtml(category: string, color: string) {
+  if (category === "france_services") {
+    return `<span style="background:#fff"><img src="./logos/france-services-mark.png" alt="" /></span>`;
+  }
   const inner = ICON_SVG_INNER[category] || "";
   return `<span style="background:${color}"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg></span>`;
 }
@@ -504,8 +507,22 @@ export default function Home() {
                         className={active.has(k) ? "category active" : "category"}
                         onClick={() => toggle(k)}
                       >
-                        <i style={{ background: data.categories[k].color }}>
-                          <CategoryIcon k={k} />
+                        <i
+                          style={
+                            k === "france_services"
+                              ? { background: "#fff", border: "1px solid #e2e8f0" }
+                              : { background: data.categories[k].color }
+                          }
+                        >
+                          {k === "france_services" ? (
+                            <img
+                              src="./logos/france-services-mark.png"
+                              alt=""
+                              className="fs-logo"
+                            />
+                          ) : (
+                            <CategoryIcon k={k} />
+                          )}
                         </i>
                         <span>
                           {data.categories[k].label}
