@@ -428,6 +428,25 @@ button {
   box-shadow: var(--soft) !important;
   font-size: 11px !important;
 }
+.service-pin {
+  background: none !important;
+  border: 0 !important;
+}
+.service-pin span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 7px #0f172a4d;
+  cursor: pointer;
+}
+.service-pin svg {
+  width: 15px;
+  height: 15px;
+}
 .leaflet-control-zoom a {
   color: var(--blue) !important;
   font-weight: 1000 !important;

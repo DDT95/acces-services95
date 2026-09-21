@@ -72,6 +72,28 @@ const ISO: Record<number, string> = {
   15: "#78c5c9",
   30: "#c0e5e7",
 };
+const ICON_SVG_INNER: Record<string, string> = {
+  france_services:
+    '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2.3" x2="12" y2="6.3"/><line x1="12" y1="17.7" x2="12" y2="21.7"/><line x1="2.3" y1="12" x2="6.3" y2="12"/><line x1="17.7" y1="12" x2="21.7" y2="12"/>',
+  administration:
+    '<path d="M3 10 12 4 21 10"/><line x1="3" y1="21" x2="21" y2="21"/><line x1="5" y1="21" x2="5" y2="10"/><line x1="9" y1="21" x2="9" y2="10"/><line x1="15" y1="21" x2="15" y2="10"/><line x1="19" y1="21" x2="19" y2="10"/>',
+  sante:
+    '<circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="16.5"/><line x1="7.5" y1="12" x2="16.5" y2="12"/>',
+  education:
+    '<path d="M3 6c3-1.5 6-1.5 9 0v13c-3-1.5-6-1.5-9 0V6Z"/><path d="M21 6c-3-1.5-6-1.5-9 0v13c3-1.5 6-1.5 9 0V6Z"/>',
+  securite:
+    '<path d="M12 2 20 5v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V5l8-3Z"/><path d="M8.5 12.3 10.8 14.6 15.3 10"/>',
+  mobilite:
+    '<rect x="4" y="5.5" width="16" height="11" rx="2.5"/><line x1="4" y1="11.5" x2="20" y2="11.5"/><line x1="8" y1="5.5" x2="8" y2="11.5"/><line x1="16" y1="5.5" x2="16" y2="11.5"/><circle cx="8" cy="18.5" r="1.4"/><circle cx="16" cy="18.5" r="1.4"/>',
+  quotidien: '<path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+  culture:
+    '<path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2.1 0-.8-.5-1.4-.5-2.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8Z"/><circle cx="8.3" cy="10.5" r="0.9" fill="#fff" stroke="none"/><circle cx="12" cy="7.8" r="0.9" fill="#fff" stroke="none"/><circle cx="15.7" cy="10.5" r="0.9" fill="#fff" stroke="none"/><circle cx="9.3" cy="15" r="0.9" fill="#fff" stroke="none"/>',
+};
+function pinIconHtml(category: string, color: string) {
+  const inner = ICON_SVG_INNER[category] || "";
+  return `<span style="background:${color}"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg></span>`;
+}
+const PIN_ZOOM_THRESHOLD = 14;
 
 export default function Home() {
   const mapEl = useRef<HTMLDivElement>(null),
@@ -91,7 +113,8 @@ export default function Home() {
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [panelOpen, setPanelOpen] = useState(false),
-    [mapReady, setMapReady] = useState(false);
+    [mapReady, setMapReady] = useState(false),
+    [zoom, setZoom] = useState(10);
   const filtered = useMemo(() => {
     if (!data) return [];
     const q = query.trim().toLocaleLowerCase("fr");
@@ -203,7 +226,9 @@ export default function Home() {
         });
         setPanelOpen(true);
       });
+      map.on("zoomend", () => setZoom(map.getZoom()));
       mapRef.current = map;
+      setZoom(map.getZoom());
       setMapReady(true);
     };
     document.body.appendChild(script);
@@ -215,21 +240,31 @@ export default function Home() {
     if (pointsRef.current) map.removeLayer(pointsRef.current);
     const group = L.layerGroup(),
       renderer = L.canvas({ padding: 0.5 }),
+      showPins = zoom >= PIN_ZOOM_THRESHOLD,
       step =
-        filtered.length > 6500 && map.getZoom() < 12
+        !showPins && filtered.length > 6500 && zoom < 12
           ? Math.ceil(filtered.length / 6500)
           : 1;
     filtered.forEach((s, i) => {
       if (i % step) return;
       const meta = data.categories[s.category],
-        marker = L.circleMarker([s.lat, s.lon], {
-          radius: s.source.includes("DILA") ? 5.5 : 4,
-          color: "#fff",
-          weight: 1.2,
-          fillColor: meta.color,
-          fillOpacity: 0.9,
-          renderer,
-        });
+        marker = showPins
+          ? L.marker([s.lat, s.lon], {
+              icon: L.divIcon({
+                className: "service-pin",
+                html: pinIconHtml(s.category, meta.color),
+                iconSize: [26, 26],
+                iconAnchor: [13, 13],
+              }),
+            })
+          : L.circleMarker([s.lat, s.lon], {
+              radius: s.source.includes("DILA") ? 5.5 : 4,
+              color: "#fff",
+              weight: 1.2,
+              fillColor: meta.color,
+              fillOpacity: 0.9,
+              renderer,
+            });
       marker.bindTooltip(
         `<strong>${esc(s.name)}</strong><br>${esc(s.typeLabel)}`,
         { direction: "top", className: "service-tooltip" },
@@ -249,7 +284,7 @@ export default function Home() {
     });
     group.addTo(map);
     pointsRef.current = group;
-  }, [data, filtered, mapReady]);
+  }, [data, filtered, mapReady, zoom]);
   useEffect(() => {
     const L = (window as any).L,
       map = mapRef.current;
@@ -822,92 +857,21 @@ function hours(r: Opening) {
   return [a, b].filter(Boolean).join(" · ") || "Sur rendez-vous";
 }
 function CategoryIcon({ k }: { k: string }) {
-  const common = {
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.7,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    width: 17,
-    height: 17,
-  };
-  switch (k) {
-    case "france_services":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="9" />
-          <circle cx="12" cy="12" r="3" />
-          <line x1="12" y1="2.3" x2="12" y2="6.3" />
-          <line x1="12" y1="17.7" x2="12" y2="21.7" />
-          <line x1="2.3" y1="12" x2="6.3" y2="12" />
-          <line x1="17.7" y1="12" x2="21.7" y2="12" />
-        </svg>
-      );
-    case "administration":
-      return (
-        <svg {...common}>
-          <path d="M3 10 12 4 21 10" />
-          <line x1="3" y1="21" x2="21" y2="21" />
-          <line x1="5" y1="21" x2="5" y2="10" />
-          <line x1="9" y1="21" x2="9" y2="10" />
-          <line x1="15" y1="21" x2="15" y2="10" />
-          <line x1="19" y1="21" x2="19" y2="10" />
-        </svg>
-      );
-    case "sante":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="9" />
-          <line x1="12" y1="7.5" x2="12" y2="16.5" />
-          <line x1="7.5" y1="12" x2="16.5" y2="12" />
-        </svg>
-      );
-    case "education":
-      return (
-        <svg {...common}>
-          <path d="M3 6c3-1.5 6-1.5 9 0v13c-3-1.5-6-1.5-9 0V6Z" />
-          <path d="M21 6c-3-1.5-6-1.5-9 0v13c3-1.5 6-1.5 9 0V6Z" />
-        </svg>
-      );
-    case "securite":
-      return (
-        <svg {...common}>
-          <path d="M12 2 20 5v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V5l8-3Z" />
-          <path d="M8.5 12.3 10.8 14.6 15.3 10" />
-        </svg>
-      );
-    case "mobilite":
-      return (
-        <svg {...common}>
-          <rect x="4" y="5.5" width="16" height="11" rx="2.5" />
-          <line x1="4" y1="11.5" x2="20" y2="11.5" />
-          <line x1="8" y1="5.5" x2="8" y2="11.5" />
-          <line x1="16" y1="5.5" x2="16" y2="11.5" />
-          <circle cx="8" cy="18.5" r="1.4" />
-          <circle cx="16" cy="18.5" r="1.4" />
-        </svg>
-      );
-    case "quotidien":
-      return (
-        <svg {...common}>
-          <path d="M6 8h12l-1 12H7L6 8Z" />
-          <path d="M9 8V6a3 3 0 0 1 6 0v2" />
-        </svg>
-      );
-    case "culture":
-      return (
-        <svg {...common}>
-          <path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2.1 0-.8-.5-1.4-.5-2.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8Z" />
-          <circle cx="8.3" cy="10.5" r="0.9" fill="currentColor" stroke="none" />
-          <circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none" />
-          <circle cx="15.7" cy="10.5" r="0.9" fill="currentColor" stroke="none" />
-          <circle cx="9.3" cy="15" r="0.9" fill="currentColor" stroke="none" />
-        </svg>
-      );
-    default:
-      return null;
-  }
+  const inner = ICON_SVG_INNER[k];
+  if (!inner) return null;
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      width={17}
+      height={17}
+      dangerouslySetInnerHTML={{ __html: inner }}
+    />
+  );
 }
 function url(x: string) {
   return /^https?:\/\//i.test(x) ? x : `https://${x}`;
