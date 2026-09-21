@@ -1,0 +1,51 @@
+name: Rafraîchir les données (DILA + OSM)
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Télécharger la base locale DILA (Service-public.gouv.fr)
+        run: |
+          curl -sSL --fail -o dila.tar.bz2 "https://lecomarquage.service-public.gouv.fr/donnees_locales_v4/all_latest.tar.bz2"
+          mkdir -p dila_extract
+          tar xjf dila.tar.bz2 -C dila_extract
+          node scripts/merge-dila.mjs dila_extract dila.json
+
+      - name: Télécharger les données OpenStreetMap du Val-d'Oise
+        run: |
+          curl -sSL --fail -X POST --data-binary @scripts/overpass-95.ql "https://overpass-api.de/api/interpreter" -o osm.json
+
+      - name: Régénérer le jeu de données consolidé
+        run: node scripts/build-data.mjs dila.json osm.json
+
+      - name: Publier si les données ont changé
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/services-95.json
+          if git diff --cached --quiet; then
+            echo "Aucun changement de données aujourd'hui."
+          else
+            git commit -m "Mise à jour quotidienne des données (DILA + OSM)"
+            git push
+          fi
