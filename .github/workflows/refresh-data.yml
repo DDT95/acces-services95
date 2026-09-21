@@ -33,7 +33,23 @@ jobs:
 
       - name: Télécharger les données OpenStreetMap du Val-d'Oise
         run: |
-          curl -sSL --fail -X POST --data-binary @scripts/overpass-95.ql "https://overpass-api.de/api/interpreter" -o osm.json
+          UA="acces-services95-bot/1.0 (+https://github.com/DDT95/acces-services95)"
+          for endpoint in \
+            "https://overpass-api.de/api/interpreter" \
+            "https://lz4.overpass-api.de/api/interpreter" \
+            "https://overpass.kumi.systems/api/interpreter"; do
+            echo "Essai : $endpoint"
+            if curl -sSL --fail -A "$UA" -X POST --data-binary @scripts/overpass-95.ql "$endpoint" -o osm.json; then
+              echo "OK via $endpoint"
+              break
+            fi
+            echo "Échec sur $endpoint"
+            rm -f osm.json
+          done
+          if [ ! -s osm.json ]; then
+            echo "::error::Aucun miroir Overpass n'a répondu correctement." >&2
+            exit 1
+          fi
 
       - name: Régénérer le jeu de données consolidé
         run: node scripts/build-data.mjs dila.json osm.json
