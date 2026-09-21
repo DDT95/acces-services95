@@ -447,6 +447,16 @@ button {
   width: 15px;
   height: 15px;
 }
+.service-pin img {
+  width: 16px;
+  height: auto;
+  display: block;
+}
+.category > i img.fs-logo {
+  width: 20px;
+  height: auto;
+  display: block;
+}
 .leaflet-control-zoom a {
   color: var(--blue) !important;
   font-weight: 1000 !important;
